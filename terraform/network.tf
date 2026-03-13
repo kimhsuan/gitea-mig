@@ -28,6 +28,21 @@ module "vpc" {
           protocol = "tcp"
         }
       ]
-    }
+    },
+    {
+      name = "${var.org_name}-${var.app_name}-${var.environment}-health-check-all-allow-rule"
+      ranges = [
+        "35.191.0.0/16",
+        "130.211.0.0/22",
+      ]
+      target_tags = [
+        "allow-cloud-iap",
+      ]
+      allow = [
+        {
+          protocol = "all"
+        }
+      ]
+    },
   ]
 }

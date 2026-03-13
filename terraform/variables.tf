@@ -23,6 +23,12 @@ variable "region" {
   default     = "us-west1"
 }
 
+variable "zone" {
+  description = "The zone to create the instance in"
+  type        = string
+  default     = null
+}
+
 variable "github_repository_owner" {
   type = string
 }
@@ -35,4 +41,10 @@ variable "ssh_keys" {
   description = "SSH keys to apply to the instance."
   type        = string
   default     = ""
+}
+
+variable "additional_metadata" {
+  type        = map(any)
+  description = "Additional metadata to attach to the instance"
+  default     = {}
 }

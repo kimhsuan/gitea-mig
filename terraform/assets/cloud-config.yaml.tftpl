@@ -1,0 +1,70 @@
+#cloud-config
+fs_setup:
+- cmd: mkfs -t %(filesystem)s -L %(label)s -m 0 -E lazy_itable_init=0,lazy_journal_init=0,discard %(device)s
+  device: /dev/disk/by-id/google-data
+  filesystem: "ext4"
+  label: data
+  partition: any
+mounts:
+- [ "LABEL=data", "/mnt/disks/data", "ext4", "discard,defaults", "0", "2" ]
+users:
+- name: user
+  uid: 1000
+  gid: 1000
+  groups: adm, video, docker, google-sudoers
+  shell: /bin/bash
+write_files:
+- path: /etc/default/docker
+  permissions: 0644
+  owner: root
+  content: |
+    DOCKER_OPTS="--registry-mirror=https://mirror.gcr.io"
+- path: /etc/default/gitea-docker
+  permissions: 0600
+  owner: root
+  content: |
+    IMAGE_NAME=${image_name}
+    IMAGE_TAG=${image_tag}
+- path: /etc/systemd/system/gitea-docker.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=Start Gitea container
+    Wants=network-online.target gcr-online.target docker.service
+    After=network-online.target gcr-online.target docker.service
+    StartLimitIntervalSec=5min
+    StartLimitBurst=6
+
+    [Service]
+    User=user
+    Group=user
+    EnvironmentFile=/etc/default/gitea-docker
+    Environment=HOME=/home/user
+    ExecStartPre=-/usr/bin/docker container stop gitea
+    ExecStartPre=-/usr/bin/docker container rm --force gitea
+    ExecStart=/usr/bin/docker container run --quiet \
+      --publish 3000:3000 \
+      --volume /mnt/disks/data/gitea/data:/var/lib/gitea:rw \
+      --volume /mnt/disks/data/gitea/config:/etc/gitea:rw \
+      --volume /etc/timezone:/etc/timezone:ro \
+      --volume /etc/localtime:/etc/localtime:ro \
+      --name=gitea --hostname=%H \
+      --env GITEA__server__DISABLE_SSH=true \
+      --env GITEA__server__DOMAIN=localhost \
+      --env GITEA__service__DISABLE_REGISTRATION=true \
+      --env GITEA__service__REQUIRE_SIGNIN_VIEW=true \
+      --env GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE=true \
+      --env GITEA__openid__ENABLE_OPENID_SIGNIN=false \
+      --env GITEA__openid__ENABLE_OPENID_SIGNUP=false \
+      $${IMAGE_NAME}:$${IMAGE_TAG}
+    ExecStop=/usr/bin/docker container stop --time 30 postgres
+    Restart=always
+    RestartSec=10s
+    TimeoutStartSec=600s
+    TimeoutStopSec=30s
+runcmd:
+- su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
+- docker pull $${IMAGE_NAME}:$${IMAGE_TAG}
+- mkdir -p /mnt/disks/data/gitea /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
+- systemctl start gitea-docker.service
