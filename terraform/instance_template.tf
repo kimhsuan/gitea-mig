@@ -32,14 +32,6 @@ module "instance_template" {
   source_image_project   = "cos-cloud"
   disk_size_gb           = 10
   disk_type              = "pd-standard"
-  additional_disks = [
-    {
-      disk_name    = "data"
-      device_name  = "data"
-      disk_type    = "pd-standard"
-      disk_size_gb = 10
-    },
-  ]
   metadata = merge(var.additional_metadata, {
     user-data = templatefile("${path.cwd}/assets/cloud-config.yaml.tftpl", {
       image_name = "docker.gitea.com/gitea"
