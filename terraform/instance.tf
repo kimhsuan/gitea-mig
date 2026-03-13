@@ -1,5 +1,5 @@
 module "instance" {
-  source = "./modules/gitea_instance"
+  source = "./modules/simple_instance"
 
   project_id   = var.project_id
   name         = "${var.org_name}-${var.app_name}-${var.environment}"
