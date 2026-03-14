@@ -48,3 +48,15 @@ variable "additional_metadata" {
   description = "Additional metadata to attach to the instance"
   default     = {}
 }
+
+variable "gitea_image_name" {
+  description = "The name of the image to use for the instance."
+  type        = string
+  default     = "docker.gitea.com/gitea"
+}
+
+variable "gitea_image_tag" {
+  description = "The tag of the image to use for the instance."
+  type        = string
+  default     = "latest-rootless"
+}

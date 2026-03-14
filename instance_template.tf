@@ -34,8 +34,8 @@ module "instance_template" {
   disk_type              = "pd-standard"
   metadata = merge(var.additional_metadata, {
     user-data = templatefile("${path.cwd}/assets/cloud-config.yaml.tftpl", {
-      image_name = "docker.gitea.com/gitea"
-      image_tag  = "1.24.4-rootless"
+      gitea_image_name = var.gitea_image_name
+      gitea_image_tag  = var.gitea_image_tag
     })
     ssh-keys = var.ssh_keys
   })

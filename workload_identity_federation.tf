@@ -29,13 +29,3 @@ module "workload_identity_federation_github" {
     "roles/iam.serviceAccountUser",
   ]
 }
-
-# import {
-#   id = "projects/kim-test-net/locations/global/workloadIdentityPools/github"
-#   to = module.workload_identity_federation_github[0].google_iam_workload_identity_pool.main
-# }
-
-# import {
-#   id = "projects/kim-test-net/locations/global/workloadIdentityPools/github/providers/my-repo"
-#   to = module.workload_identity_federation_github[0].google_iam_workload_identity_pool_provider.main["my-repo"]
-# }
