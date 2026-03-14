@@ -34,8 +34,14 @@ module "instance_template" {
   disk_type              = "pd-standard"
   metadata = merge(var.additional_metadata, {
     user-data = templatefile("${path.cwd}/assets/cloud-config.yaml.tftpl", {
-      gitea_image_name = var.gitea_image_name
-      gitea_image_tag  = var.gitea_image_tag
+      gitea_image_name        = var.gitea_image_name
+      gitea_image_tag         = var.gitea_image_tag
+      cloudflared_token       = var.cloudflared_token
+      gitea_domain            = var.gitea_domain
+      gitea_root_url          = var.gitea_root_url
+      gitea_lfs_jwt_secret    = var.gitea_lfs_jwt_secret
+      gitea_internal_token    = var.gitea_internal_token
+      gitea_oauth2_jwt_secret = var.gitea_oauth2_jwt_secret
     })
     ssh-keys = var.ssh_keys
   })

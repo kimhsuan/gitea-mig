@@ -19,52 +19,122 @@ write_files:
   owner: root
   content: |
     DOCKER_OPTS="--registry-mirror=https://mirror.gcr.io"
-- path: /etc/default/gitea-docker
-  permissions: 0600
+- path: /var/compose/compose.yaml
+  permissions: 0644
+  content: |
+    name: gitea
+    networks:
+      net:
+    include:
+      - compose.cloudflared.yaml
+      - compose.gitea.yml
+- path: /var/compose/compose.gitea.yml
+  permissions: 0644
+  content: |
+    services:
+      gitea:
+        image: docker.gitea.com/gitea:1.24.4-rootless
+        restart: always
+        networks:
+          - net
+        volumes:
+          - /mnt/disks/data/gitea/data:/var/lib/gitea
+          - /mnt/disks/data/gitea/config:/etc/gitea
+          - /etc/timezone:/etc/timezone:ro
+          - /etc/localtime:/etc/localtime:ro
+        environment:
+          GITEA__server__DISABLE_SSH: $${GITEA__server__DISABLE_SSH:-true}
+          GITEA__server__DOMAIN: $${GITEA__server__DOMAIN:-localhost}
+          GITEA__server__ROOT_URL: $${GITEA__server__ROOT_URL}
+          GITEA__server__LFS_JWT_SECRET: $${GITEA__server__LFS_JWT_SECRET}
+          GITEA__security__INTERNAL_TOKEN: $${GITEA__security__INTERNAL_TOKEN}
+          GITEA__service__DISABLE_REGISTRATION: $${GITEA__service__DISABLE_REGISTRATION:-true}
+          GITEA__service__REQUIRE_SIGNIN_VIEW: $${GITEA__service__REQUIRE_SIGNIN_VIEW:-true}
+          GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE: $${GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE:-true}
+          GITEA__openid__ENABLE_OPENID_SIGNIN: $${GITEA__openid__ENABLE_OPENID_SIGNIN:-false}
+          GITEA__openid__ENABLE_OPENID_SIGNUP: $${GITEA__openid__ENABLE_OPENID_SIGNUP:-false}
+          GITEA__oauth2__JWT_SECRET: $${GITEA__oauth2__JWT_SECRET}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.9'
+              memory: 300M
+            reservations:
+              cpus: '0.1'
+              memory: 100M
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+          interval: 30s
+          timeout: 10s
+          retries: 5
+          start_period: 30s
+- path: /var/compose/compose.cloudflared.yaml
+  permissions: 0644
+  content: |
+    services:
+      cloudflared:
+        image: cloudflare/cloudflared:latest
+        restart: always
+        networks:
+          - net
+        command: tunnel --no-autoupdate run --token $${CLOUDFLARED_TOKEN}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.5'
+              memory: 100M
+- path: /var/runtime/.env
+  permissions: 0644
   owner: root
   content: |
-    GITEA_IMAGE_NAME=${gitea_image_name}
-    GITEA_IMAGE_TAG=${gitea_image_tag}
+    CLOUDFLARED_TOKEN=${cloudflared_token}
+    GITEA__server__DOMAIN=${gitea_domain}
+    GITEA__server__ROOT_URL=${gitea_root_url}
+    GITEA__server__LFS_JWT_SECRET=${gitea_lfs_jwt_secret}
+    GITEA__security__INTERNAL_TOKEN=${gitea_internal_token}
+    GITEA__oauth2__JWT_SECRET=${gitea_oauth2_jwt_secret}
 - path: /etc/systemd/system/gitea-docker.service
   permissions: 0644
   owner: root
   content: |
     [Unit]
-    Description=Start Gitea container
+    Description=Gitea Service (Docker Compose)
     Wants=network-online.target gcr-online.target docker.service
     After=network-online.target gcr-online.target docker.service
     StartLimitIntervalSec=5min
     StartLimitBurst=6
 
     [Service]
+    Type=oneshot
+    RemainAfterExit=yes
     User=user
     Group=user
-    EnvironmentFile=/etc/default/gitea-docker
     Environment=HOME=/home/user
-    ExecStartPre=-/usr/bin/docker container stop gitea
-    ExecStartPre=-/usr/bin/docker container rm --force gitea
-    ExecStart=/usr/bin/docker container run --quiet \
-      --publish 3000:3000 \
-      --volume /mnt/disks/data/gitea/data:/var/lib/gitea:rw \
-      --volume /mnt/disks/data/gitea/config:/etc/gitea:rw \
-      --volume /etc/timezone:/etc/timezone:ro \
-      --volume /etc/localtime:/etc/localtime:ro \
-      --name=gitea --hostname=%H \
-      --env GITEA__server__DISABLE_SSH=true \
-      --env GITEA__server__DOMAIN=localhost \
-      --env GITEA__service__DISABLE_REGISTRATION=true \
-      --env GITEA__service__REQUIRE_SIGNIN_VIEW=true \
-      --env GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE=true \
-      --env GITEA__openid__ENABLE_OPENID_SIGNIN=false \
-      --env GITEA__openid__ENABLE_OPENID_SIGNUP=false \
-      $${GITEA_IMAGE_NAME}:$${GITEA_IMAGE_TAG}
-    ExecStop=/usr/bin/docker container stop --time 30 postgres
-    Restart=always
-    RestartSec=10s
+    WorkingDirectory=/var/compose
+    ExecStart=/usr/bin/docker container run --rm \
+      --volume /var/run/docker.sock:/var/run/docker.sock:rw \
+      --volume /mnt/disks/data:/mnt/disks/data:rw \
+      --volume /var/compose:/var/compose:ro \
+      --volume /var/runtime:/var/runtime:ro \
+      --workdir /var/compose \
+      --env-file /var/runtime/.env \
+      docker:28-cli compose up --detach
+    ExecStop=/usr/bin/docker container run --rm \
+      --volume /var/run/docker.sock:/var/run/docker.sock:rw \
+      --volume /mnt/disks/data:/mnt/disks/data:rw \
+      --volume /var/compose:/var/compose:ro \
+      --volume /var/runtime:/var/runtime:ro \
+      --workdir /var/compose \
+      --env-file /var/runtime/.env \
+      docker:28-cli compose stop
     TimeoutStartSec=600s
     TimeoutStopSec=30s
+
+    [Install]
+    WantedBy=multi-user.target
 runcmd:
 - su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
-- docker pull $${GITEA_IMAGE_NAME}:$${GITEA_IMAGE_TAG}
-- mkdir -p /mnt/disks/data/gitea /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
+- docker image pull docker:28-cli
+- mkdir -p /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
+- systemctl daemon-reload
 - systemctl start gitea-docker.service

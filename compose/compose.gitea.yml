@@ -5,8 +5,8 @@ services:
     networks:
       - net
     volumes:
-      - /data/gitea/data:/var/lib/gitea
-      - /data/gitea/config:/etc/gitea
+      - /mnt/disks/data/gitea/data:/var/lib/gitea
+      - /mnt/disks/data/gitea/config:/etc/gitea
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     environment:

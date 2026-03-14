@@ -60,3 +60,27 @@ variable "gitea_image_tag" {
   type        = string
   default     = "latest-rootless"
 }
+
+variable "cloudflared_token" {
+  type = string
+}
+
+variable "gitea_domain" {
+  type = string
+}
+
+variable "gitea_root_url" {
+  type = string
+}
+
+variable "gitea_lfs_jwt_secret" {
+  type = string
+}
+
+variable "gitea_internal_token" {
+  type = string
+}
+
+variable "gitea_oauth2_jwt_secret" {
+  type = string
+}
