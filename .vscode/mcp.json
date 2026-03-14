@@ -8,6 +8,13 @@
         "--rm",
         "hashicorp/terraform-mcp-server:0.4.0"
       ]
-    }
+    },
+    "gcloud": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/gcloud-mcp"
+      ]
+    },
   }
 }
