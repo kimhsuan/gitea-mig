@@ -6,7 +6,7 @@ module "mig" {
   instance_template = module.instance_template.self_link
   region            = var.region
   hostname          = "${var.org_name}-${var.app_name}-${var.environment}"
-  target_size       = 1
+  target_size       = 0
   update_policy = [
     {
       instance_redistribution_type   = "NONE"
