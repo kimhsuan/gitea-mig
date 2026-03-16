@@ -28,12 +28,14 @@ module "instance_template" {
   name_prefix            = "${var.org_name}-${var.app_name}-${var.environment}"
   machine_type           = "e2-micro"
   spot                   = true
-  source_image_family    = "cos-stable"
-  source_image_project   = "cos-cloud"
+  source_image_project   = var.source_image_project
+  source_image_family    = var.source_image_family
   disk_size_gb           = 10
   disk_type              = "pd-standard"
   metadata = merge(var.additional_metadata, {
     user-data = templatefile("${path.cwd}/assets/cloud-config.yaml.tftpl", {
+      docker_image_name       = var.docker_image_name
+      docker_image_tag        = var.docker_image_tag
       gitea_image_name        = var.gitea_image_name
       gitea_image_tag         = var.gitea_image_tag
       cloudflared_token       = var.cloudflared_token

@@ -19,7 +19,7 @@ write_files:
   owner: root
   content: |
     DOCKER_OPTS="--registry-mirror=https://mirror.gcr.io"
-- path: /var/compose/compose.yaml
+- path: /var/gitea/compose.yaml
   permissions: 0644
   content: |
     name: gitea
@@ -28,12 +28,27 @@ write_files:
     include:
       - compose.cloudflared.yaml
       - compose.gitea.yml
-- path: /var/compose/compose.gitea.yml
+- path: /var/gitea/compose.cloudflared.yaml
+  permissions: 0644
+  content: |
+    services:
+      cloudflared:
+        image: cloudflare/cloudflared:latest
+        restart: always
+        networks:
+          - net
+        command: tunnel --no-autoupdate run --token $${CLOUDFLARED_TOKEN}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.5'
+              memory: 100M
+- path: /var/gitea/compose.gitea.yml
   permissions: 0644
   content: |
     services:
       gitea:
-        image: docker.gitea.com/gitea:1.24.4-rootless
+        image: ${gitea_image_name}:${gitea_image_tag}
         restart: always
         networks:
           - net
@@ -68,22 +83,7 @@ write_files:
           timeout: 10s
           retries: 5
           start_period: 30s
-- path: /var/compose/compose.cloudflared.yaml
-  permissions: 0644
-  content: |
-    services:
-      cloudflared:
-        image: cloudflare/cloudflared:latest
-        restart: always
-        networks:
-          - net
-        command: tunnel --no-autoupdate run --token $${CLOUDFLARED_TOKEN}
-        deploy:
-          resources:
-            limits:
-              cpus: '0.5'
-              memory: 100M
-- path: /var/runtime/.env
+- path: /var/gitea/.env
   permissions: 0644
   owner: root
   content: |
@@ -110,31 +110,31 @@ write_files:
     User=user
     Group=user
     Environment=HOME=/home/user
-    WorkingDirectory=/var/compose
+    WorkingDirectory=/var/gitea
     ExecStart=/usr/bin/docker container run --rm \
       --volume /var/run/docker.sock:/var/run/docker.sock:rw \
       --volume /mnt/disks/data:/mnt/disks/data:rw \
-      --volume /var/compose:/var/compose:ro \
-      --volume /var/runtime:/var/runtime:ro \
-      --workdir /var/compose \
-      --env-file /var/runtime/.env \
-      docker:28-cli compose up --detach
+      --volume /var/gitea:/var/gitea:ro \
+      --workdir /var/gitea \
+      --env-file /var/gitea/.env \
+      ${docker_image_name}:${docker_image_tag} compose up --detach
     ExecStop=/usr/bin/docker container run --rm \
       --volume /var/run/docker.sock:/var/run/docker.sock:rw \
       --volume /mnt/disks/data:/mnt/disks/data:rw \
-      --volume /var/compose:/var/compose:ro \
-      --volume /var/runtime:/var/runtime:ro \
-      --workdir /var/compose \
-      --env-file /var/runtime/.env \
-      docker:28-cli compose stop
+      --volume /var/gitea:/var/gitea:ro \
+      --workdir /var/gitea \
+      --env-file /var/gitea/.env \
+      ${docker_image_name}:${docker_image_tag} compose stop
     TimeoutStartSec=600s
     TimeoutStopSec=30s
 
     [Install]
     WantedBy=multi-user.target
 runcmd:
-- su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
-- docker image pull docker:28-cli
-- mkdir -p /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
 - systemctl daemon-reload
+- systemctl restart docker.service
+- su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
+- docker image pull ${docker_image_name}:${docker_image_tag}
+- mkdir -p /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
+- docker image pull ${gitea_image_name}:${gitea_image_tag}
 - systemctl start gitea-docker.service

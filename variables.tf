@@ -1,6 +1,6 @@
 variable "project_id" {
-  description = "The project ID for the Google Cloud resources."
   type        = string
+  description = "The project ID for the Google Cloud resources."
 }
 
 variable "org_name" {
@@ -18,15 +18,25 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "The region where the resources will be deployed."
   type        = string
+  description = "The region where the resources will be deployed."
   default     = "us-west1"
 }
 
 variable "zone" {
-  description = "The zone to create the instance in"
   type        = string
+  description = "The zone to create the instance in"
   default     = null
+}
+
+variable "source_image_project" {
+  type    = string
+  default = "cos-cloud"
+}
+
+variable "source_image_family" {
+  type    = string
+  default = "cos-125-lts"
 }
 
 variable "github_repository_owner" {
@@ -47,6 +57,16 @@ variable "additional_metadata" {
   type        = map(any)
   description = "Additional metadata to attach to the instance"
   default     = {}
+}
+
+variable "docker_image_name" {
+  type    = string
+  default = "docker"
+}
+
+variable "docker_image_tag" {
+  type    = string
+  default = "27-cli"
 }
 
 variable "gitea_image_name" {
