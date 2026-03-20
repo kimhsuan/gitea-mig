@@ -94,13 +94,13 @@ ZONE=us-west1-a
 PROJECT_ID=
 gcloud compute ssh ${SSH_USER}@${INSTANCE_NAME} --tunnel-through-iap \
   --zone=${ZONE} --project=${PROJECT_ID} \
-  --ssh-flag='-qNf -L 12375:127.0.0.1:2375'
+  --ssh-flag='-qNf -L /tmp/docker.sock:/var/run/docker.sock'
 ```
 
 After setting up the tunnel, you can run Docker commands against the remote Docker daemon using:
 
 ```bash
-DOCKER_HOST=tcp://127.0.0.1:12375 docker info
+DOCKER_HOST=unix:///tmp/docker.sock docker info
 ```
 
 ---

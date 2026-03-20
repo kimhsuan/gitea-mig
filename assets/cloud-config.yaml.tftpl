@@ -1,0 +1,172 @@
+#cloud-config
+fs_setup:
+- cmd: mkfs -t %(filesystem)s -L %(label)s -m 0 -E lazy_itable_init=0,lazy_journal_init=0,discard %(device)s
+  device: /dev/disk/by-id/google-data
+  filesystem: "ext4"
+  label: data
+  partition: any
+mounts:
+- [ "LABEL=data", "/mnt/disks/data", "ext4", "discard,defaults", "0", "2" ]
+users:
+- name: user
+  uid: 1000
+  gid: 1000
+  groups: adm, video, docker, google-sudoers
+  shell: /bin/bash
+write_files:
+- path: /etc/default/docker
+  permissions: 0644
+  owner: root
+  content: |
+    DOCKER_OPTS="--registry-mirror=https://mirror.gcr.io"
+- path: /var/gitea/compose.yaml
+  permissions: 0644
+  content: |
+    name: gitea
+    networks:
+      net:
+    include:
+      - compose.cloudflared.yaml
+      - compose.gitea.yaml
+      - compose.postgres.yaml
+- path: /var/gitea/compose.cloudflared.yaml
+  permissions: 0644
+  content: |
+    services:
+      cloudflared:
+        image: cloudflare/cloudflared:latest
+        restart: always
+        networks:
+          - net
+        command: tunnel --no-autoupdate run --token $${CLOUDFLARED_TOKEN}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.5'
+              memory: 100M
+- path: /var/gitea/compose.gitea.yaml
+  permissions: 0644
+  content: |
+    services:
+      gitea:
+        image: ${gitea_image_name}:${gitea_image_tag}
+        restart: always
+        networks:
+          - net
+        volumes:
+          - /mnt/disks/data/gitea/data:/var/lib/gitea
+          - /mnt/disks/data/gitea/config:/etc/gitea
+          - /etc/timezone:/etc/timezone:ro
+          - /etc/localtime:/etc/localtime:ro
+        environment:
+          GITEA__database__DB_TYPE: postgres
+          GITEA__database__HOST: db:5432
+          GITEA__database__NAME: $${POSTGRES_DB:-gitea}
+          GITEA__database__USER: $${POSTGRES_USER:-gitea}
+          GITEA__database__PASSWD: $${POSTGRES_PASSWORD:-gitea}
+          GITEA__server__DISABLE_SSH: $${GITEA__server__DISABLE_SSH:-true}
+          GITEA__server__DOMAIN: $${GITEA__server__DOMAIN:-localhost}
+          GITEA__server__ROOT_URL: $${GITEA__server__ROOT_URL}
+          GITEA__server__LFS_JWT_SECRET: $${GITEA__server__LFS_JWT_SECRET}
+          GITEA__security__INTERNAL_TOKEN: $${GITEA__security__INTERNAL_TOKEN}
+          GITEA__service__DISABLE_REGISTRATION: $${GITEA__service__DISABLE_REGISTRATION:-true}
+          GITEA__service__REQUIRE_SIGNIN_VIEW: $${GITEA__service__REQUIRE_SIGNIN_VIEW:-true}
+          GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE: $${GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE:-true}
+          GITEA__openid__ENABLE_OPENID_SIGNIN: $${GITEA__openid__ENABLE_OPENID_SIGNIN:-false}
+          GITEA__openid__ENABLE_OPENID_SIGNUP: $${GITEA__openid__ENABLE_OPENID_SIGNUP:-false}
+          GITEA__oauth2__JWT_SECRET: $${GITEA__oauth2__JWT_SECRET}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.9'
+              memory: 300M
+            reservations:
+              cpus: '0.1'
+              memory: 100M
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+          interval: 30s
+          timeout: 10s
+          retries: 5
+          start_period: 30s
+- path: /var/gitea/compose.postgres.yaml
+  permissions: 0644
+  content: |
+    services:
+      db:
+        image: postgres:18.3-trixie
+        restart: always
+        shm_size: 128mb
+        networks:
+          - net
+        volumes:
+          - /mnt/disks/data/postgresql:/var/lib/postgresql
+        environment:
+          POSTGRES_USER: $${POSTGRES_USER:-gitea}
+          POSTGRES_PASSWORD: $${POSTGRES_PASSWORD:-gitea}
+          POSTGRES_DB: $${POSTGRES_DB:-gitea}
+        deploy:
+          resources:
+            limits:
+              cpus: '0.9'
+              memory: 100M
+            reservations:
+              cpus: '0.1'
+              memory: 100M
+- path: /var/gitea/.env
+  permissions: 0644
+  owner: root
+  content: |
+    CLOUDFLARED_TOKEN=${cloudflared_token}
+    GITEA__server__DOMAIN=${gitea_domain}
+    GITEA__server__ROOT_URL=${gitea_root_url}
+    GITEA__server__LFS_JWT_SECRET=${gitea_lfs_jwt_secret}
+    GITEA__security__INTERNAL_TOKEN=${gitea_internal_token}
+    GITEA__oauth2__JWT_SECRET=${gitea_oauth2_jwt_secret}
+- path: /etc/systemd/system/gitea-docker.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=Gitea Service (Docker Compose)
+    Wants=network-online.target gcr-online.target docker.service
+    After=network-online.target gcr-online.target docker.service
+    StartLimitIntervalSec=5min
+    StartLimitBurst=6
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    User=user
+    Group=user
+    Environment=HOME=/home/user
+    WorkingDirectory=/var/gitea
+    ExecStart=/usr/bin/docker container run --rm \
+      --volume /var/run/docker.sock:/var/run/docker.sock:rw \
+      --volume /mnt/disks/data:/mnt/disks/data:rw \
+      --volume /var/gitea:/var/gitea:ro \
+      --workdir /var/gitea \
+      --env-file /var/gitea/.env \
+      ${docker_image_name}:${docker_image_tag} compose up --detach
+    ExecStop=/usr/bin/docker container run --rm \
+      --volume /var/run/docker.sock:/var/run/docker.sock:rw \
+      --volume /mnt/disks/data:/mnt/disks/data:rw \
+      --volume /var/gitea:/var/gitea:ro \
+      --workdir /var/gitea \
+      --env-file /var/gitea/.env \
+      ${docker_image_name}:${docker_image_tag} compose stop
+    TimeoutStartSec=600s
+    TimeoutStopSec=30s
+
+    [Install]
+    WantedBy=multi-user.target
+runcmd:
+- systemctl daemon-reload
+- systemctl restart docker.service
+- su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
+- docker image pull ${docker_image_name}:${docker_image_tag}
+- mkdir -p /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
+- docker image pull cloudflare/cloudflared:latest
+- docker image pull ${gitea_image_name}:${gitea_image_tag}
+- docker image pull postgres:18.3-trixie
+- systemctl start gitea-docker.service

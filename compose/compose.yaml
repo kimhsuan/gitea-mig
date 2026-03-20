@@ -5,4 +5,5 @@ networks:
 
 include:
   - compose.cloudflared.yaml
-  - compose.gitea.yml
+  - compose.gitea.yaml
+  - compose.postgres.yaml
