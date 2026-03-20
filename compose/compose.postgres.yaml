@@ -11,6 +11,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-gitea}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gitea}
       POSTGRES_DB: ${POSTGRES_DB:-gitea}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.9'
+          memory: 100M
+        reservations:
+          cpus: '0.1'
+          memory: 100M
 
 volumes:
   db-data:
