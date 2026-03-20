@@ -27,7 +27,7 @@ module "instance_template" {
   create_service_account = false
   name_prefix            = "${var.org_name}-${var.app_name}-${var.environment}"
   machine_type           = "e2-micro"
-  spot                   = true
+  spot                   = var.spot
   source_image_project   = var.source_image_project
   source_image_family    = var.source_image_family
   disk_size_gb           = 10

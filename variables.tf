@@ -29,6 +29,11 @@ variable "zone" {
   default     = null
 }
 
+variable "spot" {
+  type    = bool
+  default = false
+}
+
 variable "source_image_project" {
   type    = string
   default = "cos-cloud"
