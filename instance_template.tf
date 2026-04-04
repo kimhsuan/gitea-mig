@@ -36,6 +36,8 @@ module "instance_template" {
     user-data = templatefile("${path.cwd}/assets/cloud-config.yaml.tftpl", {
       docker_image_name       = var.docker_image_name
       docker_image_tag        = var.docker_image_tag
+      cloudflared_image_name  = var.cloudflared_image_name
+      cloudflared_image_tag   = var.cloudflared_image_tag
       gitea_image_name        = var.gitea_image_name
       gitea_image_tag         = var.gitea_image_tag
       cloudflared_token       = var.cloudflared_token

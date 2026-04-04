@@ -34,7 +34,7 @@ write_files:
   content: |
     services:
       cloudflared:
-        image: cloudflare/cloudflared:latest
+        image: ${cloudflared_image_name}:${cloudflared_image_tag}
         restart: always
         networks:
           - net
@@ -82,10 +82,10 @@ write_files:
           resources:
             limits:
               cpus: '0.9'
-              memory: 300M
+              memory: 400M
             reservations:
               cpus: '0.1'
-              memory: 100M
+              memory: 200M
         healthcheck:
           test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
           interval: 30s
@@ -170,7 +170,7 @@ runcmd:
 - su - user -c "docker-credential-gcr configure-docker --registries asia-docker.pkg.dev,us-docker.pkg.dev,asia-east1-docker.pkg.dev,us-west1-docker.pkg.dev"
 - docker image pull ${docker_image_name}:${docker_image_tag}
 - mkdir -p /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config && chown -R 1000:1000 /mnt/disks/data/gitea/data /mnt/disks/data/gitea/config
-- docker image pull cloudflare/cloudflared:latest
+- docker image pull ${cloudflared_image_name}:${cloudflared_image_tag}
 - docker image pull ${gitea_image_name}:${gitea_image_tag}
 - docker image pull postgres:18.3-trixie
 - systemctl start gitea-docker.service

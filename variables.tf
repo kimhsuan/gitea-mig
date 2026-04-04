@@ -74,6 +74,16 @@ variable "docker_image_tag" {
   default = "27-cli"
 }
 
+variable "cloudflared_image_name" {
+  type    = string
+  default = "cloudflare/cloudflared"
+}
+
+variable "cloudflared_image_tag" {
+  type    = string
+  default = "2026.2.0"
+}
+
 variable "gitea_image_name" {
   description = "The name of the image to use for the instance."
   type        = string
