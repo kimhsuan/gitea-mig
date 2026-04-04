@@ -90,6 +90,10 @@ variable "cloudflared_token" {
   type = string
 }
 
+variable "gitea_ssh_domain" {
+  type = string
+}
+
 variable "gitea_domain" {
   type = string
 }

@@ -39,6 +39,7 @@ module "instance_template" {
       gitea_image_name        = var.gitea_image_name
       gitea_image_tag         = var.gitea_image_tag
       cloudflared_token       = var.cloudflared_token
+      gitea_ssh_domain        = var.gitea_ssh_domain
       gitea_domain            = var.gitea_domain
       gitea_root_url          = var.gitea_root_url
       gitea_lfs_jwt_secret    = var.gitea_lfs_jwt_secret

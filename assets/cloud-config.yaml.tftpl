@@ -64,7 +64,10 @@ write_files:
           GITEA__database__NAME: $${POSTGRES_DB:-gitea}
           GITEA__database__USER: $${POSTGRES_USER:-gitea}
           GITEA__database__PASSWD: $${POSTGRES_PASSWORD:-gitea}
-          GITEA__server__DISABLE_SSH: $${GITEA__server__DISABLE_SSH:-true}
+          GITEA__server__DISABLE_SSH: $${GITEA__server__DISABLE_SSH:-false}
+          GITEA__server__SSH_PORT: $${GITEA__server__SSH_PORT:-22}
+          GITEA__server__SSH_LISTEN_PORT: $${GITEA__server__SSH_LISTEN_PORT:-22}
+          GITEA__server__SSH_DOMAIN: $${GITEA__server__SSH_DOMAIN:-localhost}
           GITEA__server__DOMAIN: $${GITEA__server__DOMAIN:-localhost}
           GITEA__server__ROOT_URL: $${GITEA__server__ROOT_URL}
           GITEA__server__LFS_JWT_SECRET: $${GITEA__server__LFS_JWT_SECRET}
@@ -118,6 +121,7 @@ write_files:
   owner: root
   content: |
     CLOUDFLARED_TOKEN=${cloudflared_token}
+    GITEA__server__SSH_DOMAIN=${gitea_ssh_domain}
     GITEA__server__DOMAIN=${gitea_domain}
     GITEA__server__ROOT_URL=${gitea_root_url}
     GITEA__server__LFS_JWT_SECRET=${gitea_lfs_jwt_secret}
